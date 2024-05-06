@@ -3,6 +3,9 @@ import copy
 import pickle
 import random
 import numpy as np
+from collections import defaultdict
+import time
+
 
 def constant_schedule(value):
     def get_schedule(i):
@@ -12,10 +15,16 @@ def constant_schedule(value):
 
 
 
-def temporal_difference_learning(number_of_games,alpha=lambda i: 0.01,exploration=lambda i : 0.001):
-    print("Constructing initial value table...")
-    value_table = construct_initial_value_table()
-    print('Initial value table constructed')
+def temporal_difference_learning(number_of_games,alpha=lambda i: 0.01,exploration=lambda i : 0.1,construct=True):
+    if construct:
+        print("Constructing initial value table...")
+        value_table = construct_initial_value_table()
+        print('Initial value table constructed')
+    else:
+        print("Loading value table...")
+        with open("value","rb") as f:
+            value_table = pickle.load(f)
+        print("Value table loaded...")
 
     for i in range(number_of_games):
         print(f"{i/number_of_games * 100} %.....")
@@ -38,6 +47,9 @@ def temporal_difference_learning(number_of_games,alpha=lambda i: 0.01,exploratio
                     play_at(copies[j],available[j][0],available[j][1],player)
                 best_index = 0
                 for k in range(1,len(copies)):
+                    if copies[k] not in value_table.keys():
+                        print_grid(copies[k])
+                        print(copies[k].__hash__())
                     if player == 1:
                         if value_table[copies[best_index]] < value_table[copies[k]]:
                             best_index = k
@@ -56,8 +68,9 @@ def temporal_difference_learning(number_of_games,alpha=lambda i: 0.01,exploratio
 
     print("Training over")
     with open("value","wb") as f:
-        pickle.dump(value_table,f)
+        pickle.dump(dict(value_table),f)
     print("Saved in value")
+
 def construct_initial_value_table():
     
     def construct_initial_value_table_from(grid,player,line,column,move_count):
@@ -65,13 +78,11 @@ def construct_initial_value_table():
         move_count += 1
         
         if grid not in value_table.keys():
-           
             if check_win_from_perspective(grid,player) != 0:
                 value_table[grid] = 1 if player == 1 else 0
             else:
                 if move_count == 9:
                     value_table[grid] = 0
-
                 else:
                     value_table[grid] = 0.5
                     available_pos = [(i,j) for i in range(3) for j in range(3) if grid.grid[i][j] == 0]
@@ -89,66 +100,29 @@ def construct_initial_value_table():
 
 
     return value_table
-    
 
-"""if __name__ == '__main__':
+"""  
+if __name__ == '__main__':
 
-    #temporal_difference_learning(1000000)
+    temporal_difference_learning(1000,construct=True)
     value_table = {}
     with open("value","rb") as f:
         value_table = pickle.load(f)
+
+   
 
     for k,v in list(value_table.items()):
         if (v > 0.5  or v < 0.5) and v != 0 and v != 1:
             print_grid(k)
             print(k.grid)
             print(k.__hash__())
-            print(v)"""
+            print(v)
 
+    print(len(value_table.items()))
 
+"""
 if __name__ == "__main__":
 
-    temporal_difference_learning(10000)
-    grid = get_initial_grid()
-
-    value_table = {}
-    with open("value","rb") as f:
-        value_table = pickle.load(f)
+    temporal_difference_learning(1000000,alpha=constant_schedule(0.001),exploration=constant_schedule(0.5),construct=True)
     
-
-
-    actual_player = 1
-    
-    stop = False
-
-    count_moves = 0
-
-   
-    while not stop and count_moves < 9 :
-        if actual_player == 2:
-            line = int(input("Line : "))
-            col = int(input("Column : "))
-            while not play_at(grid,line,col,actual_player):
-                print("Not Available")
-                line = int(input("Line : "))
-                col = int(input("Column : "))
-        else:
-            available = [(i,j) for i in range(3) for j in range(3) if grid.grid[i][j] == 0]
-            copies = [copy.deepcopy(grid) for _ in range(len(available))]
-            for j in range(len(copies)):
-                play_at(copies[j],available[j][0],available[j][1],1)
-            best_index = 0
-            for k in range(1,len(copies)):
-                if value_table[copies[best_index]] < value_table[copies[k]]:
-                    best_index = k
-                
-            grid = copies[best_index]
-        count_moves += 1  
-        stop = check_win_from_perspective(grid,actual_player)
-        if stop:
-            print(f"Victoire de {'X' if actual_player==1 else "O"}")
-        actual_player = actual_player % 2 + 1
-        print_grid(grid)
-    if not stop:
-        print("Egalité")
     
